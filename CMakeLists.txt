@@ -33,7 +33,7 @@ FetchContent_MakeAvailable(fetch_sdl)
 FetchContent_Declare(
         fetch_glm
         GIT_REPOSITORY	https://github.com/g-truc/glm.git
-        GIT_TAG 	    v1.0.3
+        GIT_TAG 	    1.0.3
 )
 FetchContent_MakeAvailable(fetch_glm)
 
@@ -53,7 +53,22 @@ FetchContent_MakeAvailable(fetch_stb_image)
 add_library(stb_image INTERFACE)
 target_include_directories(stb_image INTERFACE)
 
-add_executable(fluid_sim main.cpp)
+FetchContent_Declare(
+        simdjson
+        GIT_REPOSITORY https://github.com/simdjson/simdjson
+        GIT_TAG v3.12.3
+)
+FetchContent_MakeAvailable(simdjson)  # manual simdjson install, dependency to fastgltf
+FetchContent_Declare(
+        fetch_fastgltf
+        GIT_REPOSITORY https://github.com/spnda/fastgltf
+        GIT_TAG v0.9.0
+)
+FetchContent_MakeAvailable(fetch_fastgltf)
+
+add_executable(fluid_sim src/main.cpp
+        src/core/vk_engine.cpp
+        src/core/vk_engine.h)
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
@@ -66,3 +81,4 @@ target_link_libraries(${PROJECT_NAME}
             stb_image
 )
 
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
