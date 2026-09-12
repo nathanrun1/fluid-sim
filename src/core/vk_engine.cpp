@@ -2,10 +2,21 @@
 // Created by Nathan Reilly on 2026-08-07.
 //
 
+#include <iostream>
+
 #include "vk_engine.h"
 
 #include "VkBootstrap.h"
 #include "SDL3/SDL_vulkan.h"
+
+#define VK_CHECK(x) \
+do { \
+    VkResult err = x; \
+if (err != VK_SUCCESS) { \
+    std::cout << "Detected Vulkan error: " << err << std::endl; \
+    abort(); \
+} \
+} while (0)
 
 constexpr bool USE_VALIDATION_LAYERS = true;
 
@@ -94,8 +105,11 @@ void VkEngine::init_vulkan()
     vkb::DeviceBuilder device_builder{ physical_device };
     vkb::Device vkb_device = device_builder.build().value();
     
-    device = vkb_device;
+    device = vkb_device.device;
     chosen_gpu = physical_device.physical_device;
+    
+    graphics_queue = vkb_device.get_queue(vkb::QueueType::graphics).value();
+    graphics_queue_family = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
 }
 
 void VkEngine::init_swapchain()
@@ -105,10 +119,30 @@ void VkEngine::init_swapchain()
 
 void VkEngine::init_commands()
 {
+    VkCommandPoolCreateInfo command_pool_info = {};
+    command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    command_pool_info.pNext = nullptr;
+    command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Allows us to reset individual command buffers
+    command_pool_info.queueFamilyIndex = graphics_queue_family;  // Optimize allocation to graphics queue family
+    
+    for (int i = 0; i < FRAME_OVERLAP; ++i)  // One command pool per overlapped frame to allow concurrent per-frame allocations
+    {
+        VK_CHECK(vkCreateCommandPool(device, &command_pool_info, nullptr, &frames[i].command_pool));
+        
+        VkCommandBufferAllocateInfo cmd_alloc_info = {};
+        cmd_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cmd_alloc_info.pNext = nullptr;
+        cmd_alloc_info.commandPool = frames[i].command_pool;
+        cmd_alloc_info.commandBufferCount = 1;
+        cmd_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        
+        VK_CHECK(vkAllocateCommandBuffers(device, &cmd_alloc_info, &frames[i].command_buffer));
+    }
 }
 
 void VkEngine::init_sync_structures()
 {
+    
 }
 
 void VkEngine::create_swapchain(uint32_t width, uint32_t height)

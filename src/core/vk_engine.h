@@ -9,14 +9,23 @@
 #include "SDL3/SDL.h"
 #include "vulkan/vulkan_core.h"
 
+constexpr unsigned int FRAME_OVERLAP = 2;
+
+struct FrameData
+{
+    VkCommandPool command_pool;
+    VkCommandBuffer command_buffer;
+};
 
 class VkEngine
 {
 public:
     bool is_initialized{false};
     bool frame_number{0};
-    
     VkExtent2D window_extent{1700, 900};
+    
+    FrameData frames[FRAME_OVERLAP];
+    FrameData& current_frame() { return frames[frame_number % FRAME_OVERLAP]; }
     
     SDL_Window* window{nullptr};
     
@@ -27,6 +36,8 @@ public:
     VkSurfaceKHR surface;
     VkSwapchainKHR swapchain;
     VkFormat swapchain_image_format;
+    VkQueue graphics_queue;
+    uint32_t graphics_queue_family;
     
     std::vector<VkImage> swapchain_images;
     std::vector<VkImageView> swapchain_image_views;
@@ -44,7 +55,6 @@ public:
     
     /** Run engine main loop */
     void run();
-    
 private:
     void init_vulkan();
     void init_swapchain();
